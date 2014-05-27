@@ -1,5 +1,5 @@
 name = Documentation
-description = Provides an interface for writing documentation for your Drupal implementatino
+description = Provides an interface for writing documentation for your Drupal implementation
 core = 7.x
 
 stylesheets[all][] = css/doc.css

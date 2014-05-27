@@ -17,3 +17,30 @@ function doc_permission() {
     ),
   );
 }
+
+/**
+ * Implements hook_help().
+ */
+function doc_help($path, $arg) {
+  switch ($path) {
+    case 'admin/config/system/documentation':
+      return t('<a href="@ga_url">Google Analytics</a> is a free (registration required) website traffic and marketing effectiveness service.', array('@ga_url' => 'http://www.google.com/analytics/'));
+  }
+}
+
+/**
+ * Implements hook_menu().
+ */
+function doc_menu() {
+  $items['admin/config/system/documentation'] = array(
+    'title' => 'Documentation',
+    'description' => 'Configure tracking behavior to get insights into your website traffic and marketing effectiveness.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('doc_admin_settings_form'),
+    'access arguments' => array('administer google analytics'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'doc.admin.inc',
+  );
+
+  return $items;
+}

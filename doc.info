@@ -4,3 +4,5 @@ core = 7.x
 
 stylesheets[all][] = css/doc.css
 scripts[] = js/doc.js
+
+configure = admin/config/system/documentation

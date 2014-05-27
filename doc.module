@@ -1,1 +1,19 @@
 <?php
+
+/**
+ * Implement hook_permission().
+ */
+function doc_permission() {
+  return array(
+    'administer documentation' => array(
+      'title' => t('Administer documentation'),
+      'description' => t('Allow editing of documentation by user.'),
+      'restrict access' => TRUE,
+    ),
+    'view documentation' => array(
+      'title' => t('View documentation'),
+      'description' => t('Allow viewing of documentation by user.'),
+      'restrict access' => TRUE,
+    ),
+  );
+}

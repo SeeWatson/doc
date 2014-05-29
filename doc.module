@@ -1,55 +1,54 @@
 <?php
-
 /**
  * Implement hook_permission().
  */
 function doc_permission() {
-  return array(
-    'administer documentation' => array(
-      'title' => t('Administer documentation'),
-      'description' => t('Allow editing of documentation by user.'),
-    ),
-    'view documentation' => array(
-      'title' => t('View documentation'),
-      'description' => t('Allow viewing of documentation by user.'),
-    ),
-  );
+	return array(
+	'administer documentation' => array(
+	'title' => t('Administer documentation'),
+	'description' => t('Allow editing of documentation by user.'),
+	),
+	'view documentation' => array(
+	'title' => t('View documentation'),
+	'description' => t('Allow viewing of documentation by user.'),
+	),
+	);
 }
 
 /**
  * Implements hook_help().
  */
 function doc_help($path, $arg) {
-  switch ($path) {
-    case 'admin/config/system/documentation':
-      return t('The documentation module provides a framework for documenting all aspects of a Drupal installation');
-	case 'admin/help#documentation':
-	  return t('The documentation module provides a framework for documenting all aspects of a Drupal installation');
-  }
+	switch ($path) {
+		case 'admin/help#documentation':
+			return t('The documentation module provides a framework for documenting all aspects of a Drupal installation');
+		case 'admin/config/system/documentation':
+			return t('The documentation module provides a framework for documenting all aspects of a Drupal installation');
+	}
 }
 
 /**
  * Implements hook_menu().
  */
 function doc_menu() {
-  $items['admin/config/system/documentation'] = array(
-	'title' => 'Documentation',
-    'description' => "View the documentation for this site's implementation of Drupal.",
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('doc_admin_settings_form'),
-    'access arguments' => array('administer documentation'),
-    'type' => MENU_NORMAL_ITEM,
-    'file' => 'doc.admin.inc',
-  );
-  $items['admin/reports/documentation'] = array(
-	'title' => 'Documentation',
-    'description' => "View the documentation for this site's implementation of Drupal.",
-    'page callback' => 'doc_documentation',
-    'access arguments' => array('view documentation'),
-    'type' => MENU_NORMAL_ITEM,
-    'file' => 'doc.admin.inc',
-  );
-  return $items;
+	$items['admin/config/system/documentation'] = array(
+		'title' => 'Documentation',
+		'description' => "View the documentation for this site's implementation of Drupal.",
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('doc_admin_settings_form'),
+		'access arguments' => array('administer documentation'),
+		'type' => MENU_NORMAL_ITEM,
+		'file' => 'doc.admin.inc',
+	);
+	$items['admin/reports/documentation'] = array(
+		'title' => 'Documentation',
+		'description' => "View the documentation for this site's implementation of Drupal.",
+		'page callback' => 'doc_documentation',
+		'access arguments' => array('view documentation'),
+		'type' => MENU_NORMAL_ITEM,
+		'file' => 'doc.admin.inc',
+	);
+	return $items;
 }
 /**
  * Implements hook_form_alter().
@@ -73,8 +72,8 @@ function doc_form_alter(&$form, &$form_state, $form_id) {
 		}
 	}
 	
-  dsm($form_id);  // print form ID to messages
-//  dsm(print_r($form, TRUE));  // print array to messages
+	dsm($form_id);// print form ID to messages
+//dsm(print_r($form, TRUE));// print array to messages
 
 }
 

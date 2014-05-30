@@ -1,5 +1,48 @@
 <?php
 /**
+ * Set global array to configure core entity links
+ */
+$GLOBALS['doc_entities'] = array(
+	'node_type_form' => array(
+		'#entity' => 'content type',
+		'#fieldset' => 'additional_settings',
+		'#id' => array('type','#default_value'),
+		'#submit_id' => array('values','name'),
+	),
+	'update_manager_install_form' => array(
+		'#entity' => 'module',
+		'#id' => array(''),
+		'#submit_id' => array(''),
+	),
+	'taxonomy_form_vocabulary' => array(
+		'#entity' => 'taxonomy',
+		'#id' => array('vid','#value'),
+		'#submit_id' => array('values','vid'),
+	),
+	'block_add_block_form' => array(
+		'#entity' => 'block',
+		'#id' => array('delta','#value'),
+		'#submit_id' => array('values','delta'),
+	),
+	'block_admin_configure' => array(
+		'#entity' => 'block',
+		'#id' => array('delta','#value'),
+		'#submit_id' => array('values','delta'),
+	),
+	'menu_edit_menu' => array(
+		'#entity' => 'menu',
+		'#id' => array('menu_name','#default_value'),
+		'#submit_id' => array('values','menu_name'),
+	),
+	'system_theme_settings' => array(
+		'#entity' => 'theme',
+		'#id' => array('var','#value'),
+		'#submit_id' => array('values','var'),
+	),
+);
+
+
+/**
  * Implement hook_permission().
  */
 function doc_permission() {
@@ -54,46 +97,65 @@ function doc_menu() {
  * Implements hook_form_alter().
  */
 function doc_form_alter(&$form, &$form_state, $form_id) {
-	if(isset($form_id)) {
-		switch($form_id) {
-			case "node_type_form":
-				$form['documentation'] = $form['documentation'] = generateFields('content type','tab','additional_settings');
-				break;
-			case "update_manager_install_form":
-				$form['documentation'] = $form['documentation'] = generateFields('module');
-				break;
-			case "taxonomy_form_vocabulary":
-				$form['documentation'] = generateFields('taxonomy');
-				break;
-			case "block_add_block_form":
-			case "block_admin_configure":
-				$form['documentation'] = generateFields('block','tab','visibility');
-				break;
-		}
+	global $doc_entities;
+
+	if(isset($form_id) && array_key_exists($form_id,$doc_entities) && $form['#submit'][0] != 'taxonomy_vocabulary_confirm_delete_submit') {
+		$doc_entity_id = doc_convertArrayToKeys($doc_entities[$form_id]['#id'],$form);
+		doc_generateFields($form,$form_id);
+		
+		module_load_include('inc', 'doc', 'doc.admin');
+		$form['#submit'][] = 'doc_form_alter_submit_handler';
 	}
-	
-	dsm($form_id);// print form ID to messages
-//dsm(print_r($form, TRUE));// print array to messages
-
+		
+//	dsm($form);
 }
+/**
+ * This function generates the documentation field
+ */
+function doc_generateFields(&$form,&$form_id) {
+	global $doc_entities;
 
-function generateFields($entity,$type="simple",$group) {
-	$formAddition = array(
-		'doc_documentation' => array(
+	$id = doc_convertArrayToKeys($doc_entities[$form_id]['#id'],$form);	
+	$entity = $doc_entities[$form_id]['#entity'];
+	$fieldset = doc_isset($doc_entities[$form_id],'fieldset');
+
+	$doc_field = array(
+		'#type' => 'fieldset',
+		'#title' => 'Documentation',
+		'#collapsible' => true,
+		'#group' => $fieldset,
+		'documentation' => array(
 			'#title' => 'Create Documentation',
 			'#type' => 'textarea',
 			'#description' => t('Provide documentation for this @entity.',array('@entity' => $entity)),
-		)
+			'#default_value' => variable_get("doc_{$entity}_{$id}"),
+		),
 	);
-	if($type==="tab"){
-		$docTextArea = $formAddition;
-		$formAddition = array(
-			'#type' => 'fieldset',
-			'#title' => 'Documentation',
-			'#collapsible' => TRUE,
-			'#group' => $group,
-			'doc_documentation' => $docTextArea,
-		);
+		
+	$form['doc']['fieldset'] = $doc_field;
+}
+
+/**
+ * This is a convenience function that replaces PHP's native isset
+ */
+function doc_isset($var,$index=false,$default_value='') {
+	$return_value = (isset($var) ? $var : $default_value);
+
+	if($index){
+		$return_value = (isset($var[$index]) ? $var[$index] : $default_value);
 	}
-	return $formAddition;
+
+	return $return_value;
+}
+/**
+ * This is a convenience function that allows for array key paths to be encoded in another array
+ */
+function doc_convertArrayToKeys($keys,$arrayToAccess){
+	if(count($keys) > 1) 
+		if(isset($arrayToAccess[$keys[0]])){
+			return doc_convertArrayToKeys(array_slice($keys, 1), $arrayToAccess[$keys[0]]);
+		} else
+			return '';
+	else
+		return $arrayToAccess[$keys[0]];	
 }

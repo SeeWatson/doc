@@ -14,6 +14,12 @@ $GLOBALS['doc_entities'] = array(
 		'#id' => array('type','#default_value'),
 		'#submit_id' => array('values','name'),
 	),
+	'field_ui_field_edit_form' => array(
+		'#entity' => 'field',
+		'#fieldset' => 'documentation',
+		'#id' => array('#field','field_name'),
+		'#submit_id' => array('values','name'),
+	),
 	'update_manager_install_form' => array(
 		'#entity' => 'module',
 		'#id' => 'module',
@@ -49,6 +55,11 @@ $GLOBALS['doc_entities'] = array(
 		'#id' => array('rid','#value'),
 		'#submit_id' => array('values','var'),
 	),
+  'doc_module_create_documentation' => array(
+		'#entity' => 'module',
+		'#id' => array('#module_id'),
+		'#submit_id' => array('#module_id'),
+	),
 );
 /**
  * Implement hook_permission().
@@ -75,6 +86,8 @@ function doc_help($path, $arg) {
 			return t('The documentation module provides a framework for documenting all aspects of a Drupal installation');
 		case 'admin/config/system/documentation':
 			return t('The documentation module provides a framework for documenting all aspects of a Drupal installation');
+    case 'admin/documentation/module/%':
+			return t('The documentation module provides a framework for documenting all aspects of a Drupal installation');
 	}
 }
 
@@ -82,22 +95,44 @@ function doc_help($path, $arg) {
  * Implements hook_menu().
  */
 function doc_menu() {
+  $access = array('view documentation');
+  $administer = array('administer documentation');
+
 	$items['admin/config/system/documentation'] = array(
 		'title' => 'Documentation',
 		'description' => "View the documentation for this site's implementation of Drupal.",
 		'page callback' => 'drupal_get_form',
 		'page arguments' => array('doc_admin_settings_form'),
-		'access arguments' => array('administer documentation'),
+		'access arguments' => $administer,
 		'type' => MENU_NORMAL_ITEM,
 		'file' => 'doc.admin.inc',
 	);
-	$items['admin/reports/documentation'] = array(
+	$items['admin/settings/documentation'] = array(
 		'title' => 'Documentation',
 		'description' => "View the documentation for this site's implementation of Drupal.",
 		'page callback' => 'drupal_get_form',
 		'page arguments' => array('doc_documentation'),
-		'access arguments' => array('view documentation'),
-		'type' => MENU_NORMAL_ITEM,
+		'access arguments' => $access,
+		'file' => 'doc.admin.inc',
+	);
+	$items['admin/settings/documentation/view'] = array(
+    'title' => 'View Documentation',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -1,
+  );
+	$items['admin/settings/documentation/settings'] = array(
+    'title' => 'Change Documentation Module Settings',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('customfilter_filter_add'),
+    'access arguments' => $administer,
+    'type' => MENU_LOCAL_TASK,
+  );
+	$items['admin/documentation/module/%'] = array(
+		'title' => 'Create Documentation for Module',
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('doc_module_create_documentation',3),
+		'access arguments' => $administer,
+		'type' => MENU_CALLBACK,
 		'file' => 'doc.admin.inc',
 	);
 	return $items;
@@ -124,14 +159,14 @@ function doc_form_alter(&$form, &$form_state, $form_id) {
 	global $doc_entities;
 
 	if(isset($form_id) && array_key_exists($form_id,$doc_entities) && $form['#submit'][0] != 'taxonomy_vocabulary_confirm_delete_submit') {
-		$doc_entity_id = doc_convertArrayToKeys($doc_entities[$form_id]['#id'],$form);
 		doc_generateFields($form,$form_id);
 		
 		module_load_include('inc', 'doc', 'doc.admin');
 		$form['#submit'][] = 'doc_form_alter_submit_handler';
 	}
-
-	if($form_id==='system_modules') {
+	
+	//Add documentation links to modules page
+	if($form_id==='system_modules' && !isset($form['confirm'])) {
 		foreach (element_children($form['modules']) as $package) {
 			$form['modules'][$package]['#header'][4]['colspan'] = 4;
 			
@@ -142,7 +177,7 @@ function doc_form_alter(&$form, &$form_state, $form_id) {
 				$module['links']['documentation'] = array(
 					'#type' => 'link',
 					'#title' => 'Documentation',
-					'#href' => 'admin/documentation/module',
+					'#href' => "admin/documentation/module/$key",
 					'#options' => array (
 						'attributes' => array(
 							'class' => array(
@@ -224,6 +259,7 @@ function doc_convertArrayToKeys($keys,$arrayToAccess){
 			} else
 				return '';
 		else
+ //     dsm($arrayToAccess);
 			return $arrayToAccess[$keys[0]];	
 	}
 }

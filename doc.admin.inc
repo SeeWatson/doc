@@ -814,15 +814,70 @@ function doc_theme_system_modules_fieldset($variables) {
 
   return theme('table', array('header' => $form['#header'], 'rows' => $rows));
 }
+function doc_module_install_create_documentation($form,$form_state) {
+  if ($form_state['values']['project_url']) {
+    $field = 'project_url';
+    $local_cache = update_manager_file_get($form_state['values']['project_url']);
+    if (!$local_cache) {
+      form_set_error($field, t('Unable to retrieve Drupal project from %url.', array('%url' => $form_state['values']['project_url'])));
+      return;
+    }
+  }
+  elseif ($_FILES['files']['name']['project_upload']) {
+    $validators = array('file_validate_extensions' => array(archiver_get_extensions()));
+    $field = 'project_upload';
+    if (!($finfo = file_save_upload($field, $validators, NULL, FILE_EXISTS_REPLACE))) {
+      // Failed to upload the file. file_save_upload() calls form_set_error() on
+      // failure.
+      return;
+    }
+    $local_cache = $finfo->uri;
+  }
 
-function doc_module_create_documentation($form,$form_state,$module) {
-  $form['#module_id'] = $module;
+  $directory = _update_manager_extract_directory();
+  try {
+    $archive = update_manager_archive_extract($local_cache, $directory);
+  }
+  catch (Exception $e) {
+    form_set_error($field, $e->getMessage());
+    return;
+  }
+
+  $files = $archive->listContents();
+  if (!$files) {
+    form_set_error($field, t('Provided archive contains no files.'));
+    return;
+  }
+
+  // Unfortunately, we can only use the directory name to determine the project
+  // name. Some archivers list the first file as the directory (i.e., MODULE/)
+  // and others list an actual file (i.e., MODULE/README.TXT).
+  $project = strtok($files[0], '/\\');
+
+  $archive_errors = update_manager_archive_verify($project, $local_cache, $directory);
+  if (!empty($archive_errors)) {
+    form_set_error($field, array_shift($archive_errors));
+    // @todo: Fix me in D8: We need a way to set multiple errors on the same
+    // form element and have all of them appear!
+    if (!empty($archive_errors)) {
+      foreach ($archive_errors as $error) {
+        drupal_set_message($error, 'error');
+      }
+    }
+    return;
+  }
+}
+function doc_module_create_documentation($form,$form_state,$module_name) {
+  $path = drupal_get_path('module',$module_name);
+  $title = Updater::getProjectTitle($path);
+
+  $form['#module_id'] = $module_name;
   $form['#submit'] = array('doc_module_create_documentation_save');
   $form['actions'] = array(
     '#type' => 'actions',
     'submit' => array(
         '#type' => 'submit',
-        '#value' => 'Submit documentation',
+        '#value' => "Submit documentation for the $title module",
     )
   );
   return $form;

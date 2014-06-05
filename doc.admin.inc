@@ -91,37 +91,74 @@ function doc_form_alter_submit_handler($form,&$form_state) {
  * @ingroup themeable
  */
 function doc_documentation($form,$form_state) {
-	$form['overview'] = doc_overview();
-	
-	$form['databases'] = array(
+  $vars = array(
+    '#type' => 'fieldset',
+    '#collapsible' => TRUE, // Added
+    '#collapsed' => FALSE,  // Added
+  );
+
+  $form['documentation'] = array(
+    '#title' => t('Site Documentation'),
+  )+$vars;
+  
+	$form['documentation']['overview'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Overview'),
+    'contents' => doc_overview(),
+  )+$vars;
+
+	$types = doc_types();
+	$form['documentation']['types'] = array(
+    '#title' => t('Content Types'),
+    'contents' => $types
+  )+$vars;
+  
+	$fields = doc_fields();
+	$form['documentation']['fields'] = array(
+    '#title' => t('Fields'),
+    'contents' => $fields,
+  )+$vars;
+
+	//Build user role documentation
+	$form['documentation']['roles'] = array(
+    '#title' => t('Roles'),
+    'contents' => doc_roles()
+  )+$vars;
+
+	//Build module documentation
+	module_load_include('inc', 'system', 'system.admin');
+	$form['documentation']['modules'] = array(
+    '#title' => t('Modules'),
+    'contents' => doc_modules($form),
+  )+$vars;
+
+	$form['documentation']['databases'] = array(
+    '#title' => t('Databases'),
+  )+$vars;
+
+	$form['documentation']['databases']['table'] = array(
 		'#theme' => 'table',
-		'#header' => array('Database Documentation'),
 		'#rows' => array(
 			0 => array(
 					doc_databases(),
 				),
 		),
 	);
-
-	$types = doc_types();
-	$form['types'] = $types;
-
-	$fields = doc_fields();
-	$form['fields'] = $fields;
-	
-	//Build user role documentation
-	$form = doc_roles($form,$form_state);
-
-	//Build module documentation
-	module_load_include('inc', 'system', 'system.admin');
-	$form = doc_modules($form);
-
+  
 	return $form;
 }
+/**
+ *   Function to display general documentation contents.
+ *
+ *   @param:
+ *     $table - table name to show.
+ *
+ *   @return: HTML string
+ */
 function doc_overview() {
 	$output = array(
 		'#theme' => 'table',
-		'#header' => array('Core Site Documentation'),
+//		'#header' => array('Core Site Documentation'),
 		'#rows' => array(
 			0 => array(
 					variable_get('doc_configuration_site'),
@@ -130,23 +167,18 @@ function doc_overview() {
 	);
 	return $output;
 }
-/*
-function doc_databases() {
-	global $databases;
-	$rows = array();
-	$header = array();
 
-	$db_types = array(
-		'mysql' => 'MySQL',
-		'mysqli' => 'MySQLi',
-		'pgsql' => 'Postgres',
-	);
-
-	dsm($databases['default']['default']);
-}
-*/
+/**
+ *   Function to display database contents.
+ *
+ *   @param:
+ *     $table - table name to show.
+ *
+ *   @return: HTML string
+ */
 function doc_databases($optimize_tables=FALSE, $show_index=FALSE) {
   global $base_url, $databases;
+  $output = '';
 
 // $databases may be an array if using multiple databases.
   if (is_array($databases)) {
@@ -182,6 +214,7 @@ function doc_databases($optimize_tables=FALSE, $show_index=FALSE) {
 // This was split out when I was informed that the $databases variable could be an array.
 function _doc_database($actdb, $databases, $optimize_tables=FALSE, $show_index=FALSE) {
   global $base_url;
+  $output = '';
 
   $rows = array();
   $header = array();
@@ -514,6 +547,16 @@ function doc_show_table($table = NULL, $rows_per_page = 20) {
   $output .= theme('pager', $rows_per_page);
   return $output;
 }
+
+/**
+ *   Function to display table contents.
+ *
+ *   @param:
+ *     $table - table name to show.
+ *     $rows_per_page - how many rows to format per page. Defaults to 20.
+ *
+ *   @return: HTML string
+ */
 function doc_types() {
   $types = node_type_get_types();
   $names = node_type_get_names();
@@ -544,6 +587,7 @@ function doc_types() {
 
   return $build;
 }
+
 /**
  * Lists all defined fields for quick reference.
  */
@@ -590,6 +634,7 @@ function doc_fields() {
 	);
   return $output;
 }
+
 /**
  * Returns HTML for the role order and new role form.
  *
@@ -599,7 +644,6 @@ function doc_fields() {
  *
  * @ingroup themeable
  */
-
 function doc_modules($form, $form_state = array()) {
   // Get current list of modules.
   $files = system_rebuild_module_data();
@@ -615,7 +659,7 @@ function doc_modules($form, $form_state = array()) {
   uasort($visible_files, 'system_sort_modules_by_info_name');
 
   $modules = array();
-  $form['modules'] = array('#tree' => TRUE);
+  $modules = array('#tree' => TRUE);
 
   // Iterate through each of the modules.
   foreach ($visible_files as $filename => $module) {
@@ -635,15 +679,15 @@ function doc_modules($form, $form_state = array()) {
         }
       }
     }
-    $form['modules'][$module->info['package']][$filename] = _system_modules_build_row($module->info, $extra);
+    $modules[$module->info['package']][$filename] = _system_modules_build_row($module->info, $extra);
   }
 
   // Add basic information to the fieldsets.
-  foreach (element_children($form['modules']) as $package) {
-    $form['modules'][$package] += array(
+  foreach (element_children($modules) as $package) {
+    $modules[$package] += array(
       '#type' => 'fieldset',
       '#title' => t($package),
-      '#collapsible' => false,
+      '#collapsible' => true,
       '#theme' => 'doc_modules',
       '#header' => array(
         array('data' => t('Enabled'), 'class' => array('checkbox')),
@@ -658,9 +702,9 @@ function doc_modules($form, $form_state = array()) {
   }
 
   // Lastly, sort all fieldsets by title.
-  uasort($form['modules'], 'element_sort_by_title');
+  uasort($modules, 'element_sort_by_title');
 
-  return $form;
+  return $modules;
 }
 
 /**
@@ -669,23 +713,25 @@ function doc_modules($form, $form_state = array()) {
  * @ingroup forms
  * @see theme_user_admin_roles()
  */
-function doc_roles($form, $form_state) {
+function doc_roles() {
   $roles = user_roles();
-
-  $form['roles'] = array(
-    '#tree' => TRUE,
-  );
-  $order = 0;
-  foreach ($roles as $rid => $name) {
-    $form['roles'][$rid]['#role'] = (object) array(
-      'rid' => $rid,
-      'name' => $name,
-      'weight' => $order,
-    );
+  $header = array ('Role Name','Documentation');
+  
+  foreach($roles as $role) {
+    $row[] = array($role,variable_get("doc_role_$role"));
   }
   
-  return $form;
+  $rows = $row;
+  
+  $output = array(
+    '#theme' => 'table', 
+    '#header' => $header, 
+    '#rows' => $rows,
+    '#empty' => t('No content types available.'),
+  );
+  return $output;
 }
+
 /**
  * Returns HTML for generating the module report.
  *
@@ -697,14 +743,15 @@ function doc_roles($form, $form_state) {
  */
 function theme_doc_modules($variables) {
   $form = $variables['form'];
-
-  // Individual table headers.
+  
   $rows = array();
+  
   // Iterate through all the modules, which are
   // children of this fieldset.
   foreach (element_children($form) as $key) {
     // Stick it into $module for easier accessing.
     $module = $form[$key];
+    
     $row = array();
     unset($module['enable']['#title']);
     $row[] = array('class' => array('checkbox'), 'data' => drupal_render($module['enable']));
@@ -714,6 +761,7 @@ function theme_doc_modules($variables) {
     }
     $row[] = $label . '><strong>' . drupal_render($module['name']) . '</strong></label>';
     $row[] = drupal_render($module['version']);
+
     // Add the description, along with any modules it requires.
     $description = drupal_render($module['description']);
     if ($module['#requires']) {
@@ -730,8 +778,10 @@ function theme_doc_modules($variables) {
 
   return theme('table', array('header' => $form['#header'], 'rows' => $rows));
 }
+
 /**
- * Returns HTML for the role order and new role form.
+ * Overrides the core system module's theme_system_modules_fieldset.
+ * Used to add the Documentation links to the modules pages
  *
  * @param $variables
  *   An associative array containing:
@@ -739,52 +789,16 @@ function theme_doc_modules($variables) {
  *
  * @ingroup themeable
  */
-function theme_doc_roles($variables) {
-  $form = $variables['form'];
-
-  $header = array(t('Name'), t('Weight'), array('data' => t('Operations'), 'colspan' => 2));
-  foreach (element_children($form['roles']) as $rid) {
-    $name = $form['roles'][$rid]['#role']->name;
-    $row = array();
-    if (in_array($rid, array(DRUPAL_ANONYMOUS_RID, DRUPAL_AUTHENTICATED_RID))) {
-      $row[] = t('@name <em>(locked)</em>', array('@name' => $name));
-      $row[] = drupal_render($form['roles'][$rid]['weight']);
-      $row[] = '';
-      $row[] = l(t('edit permissions'), 'admin/people/permissions/' . $rid);
-    }
-    else {
-      $row[] = check_plain($name);
-      $row[] = drupal_render($form['roles'][$rid]['weight']);
-      $row[] = l(t('edit role'), 'admin/people/permissions/roles/edit/' . $rid);
-      $row[] = l(t('edit permissions'), 'admin/people/permissions/' . $rid);
-    }
-    $rows[] = array('data' => $row);
-  }
-  $rows[] = array(array('data' => drupal_render($form['name']) . drupal_render($form['add']), 'colspan' => 4, 'class' => 'edit-name'));
-
-  $output = theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('id' => 'user-roles')));
-  $output .= drupal_render_children($form);
-
-  return $output;
-}
-/**
- * Returns HTML for the module listing/editing page.
- *
- * @param $variables
- *   An associative array containing:
- *   - form: A render element representing the form.
- *
- * @ingroup themeable
- */
-
 function doc_theme_system_modules_fieldset($variables) {
   $form = $variables['form'];
 
   // Individual table headers.
   $rows = array();
+  
   // Iterate through all the modules, which are
   // children of this fieldset.
   foreach (element_children($form) as $key) {
+    
     // Stick it into $module for easier accessing.
     $module = $form[$key];
     $row = array();
@@ -814,12 +828,15 @@ function doc_theme_system_modules_fieldset($variables) {
 
   return theme('table', array('header' => $form['#header'], 'rows' => $rows));
 }
+/**
+ * Used to save documentation whenever a new module is installed.
+ */
 function doc_module_install_create_documentation($form,$form_state) {
   if ($form_state['values']['project_url']) {
     $field = 'project_url';
     $local_cache = update_manager_file_get($form_state['values']['project_url']);
     if (!$local_cache) {
-      form_set_error($field, t('Unable to retrieve Drupal project from %url.', array('%url' => $form_state['values']['project_url'])));
+//      form_set_error($field, t('Unable to retrieve Drupal project from %url.', array('%url' => $form_state['values']['project_url'])));
       return;
     }
   }
@@ -839,13 +856,13 @@ function doc_module_install_create_documentation($form,$form_state) {
     $archive = update_manager_archive_extract($local_cache, $directory);
   }
   catch (Exception $e) {
-    form_set_error($field, $e->getMessage());
+//    form_set_error($field, $e->getMessage());
     return;
   }
 
   $files = $archive->listContents();
   if (!$files) {
-    form_set_error($field, t('Provided archive contains no files.'));
+//    form_set_error($field, t('Provided archive contains no files.'));
     return;
   }
 
@@ -856,17 +873,29 @@ function doc_module_install_create_documentation($form,$form_state) {
 
   $archive_errors = update_manager_archive_verify($project, $local_cache, $directory);
   if (!empty($archive_errors)) {
-    form_set_error($field, array_shift($archive_errors));
+//    form_set_error($field, array_shift($archive_errors));
     // @todo: Fix me in D8: We need a way to set multiple errors on the same
     // form element and have all of them appear!
     if (!empty($archive_errors)) {
       foreach ($archive_errors as $error) {
-        drupal_set_message($error, 'error');
+//        drupal_set_message($error, 'error');
       }
     }
     return;
   }
+  
+  variable_set("doc_module_$project",doc_isset($form_state['values'],'documentation'));
 }
+
+/**
+ * Returns HTML for the module listing/editing page.
+ *
+ * @param $variables
+ *   An associative array containing:
+ *   - form: A render element representing the form.
+ *
+ * @ingroup themeable
+ */
 function doc_module_create_documentation($form,$form_state,$module_name) {
   $path = drupal_get_path('module',$module_name);
   $title = Updater::getProjectTitle($path);
@@ -882,6 +911,16 @@ function doc_module_create_documentation($form,$form_state,$module_name) {
   );
   return $form;
 }
+
+/**
+ * Returns HTML for the module listing/editing page.
+ *
+ * @param $variables
+ *   An associative array containing:
+ *   - form: A render element representing the form.
+ *
+ * @ingroup themeable
+ */
 function doc_module_create_documentation_save($form,$form_state) {
   variable_set('doc_module_'.$form['#module_id'],$form_state['values']['documentation']);
 }

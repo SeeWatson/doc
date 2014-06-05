@@ -2,64 +2,69 @@
 /**
  * Set global array to configure core entity links
  */
+$vars = array (
+  '#submit_handler' => 'doc_form_alter_submit_handler',
+);
+ 
 $GLOBALS['doc_entities'] = array(
 	'system_site_information_settings' => array(
 		'#entity' => 'configuration',
 		'#id' => 'site',
 		'#submit_id' => 'site',
-	),
+	)+$vars,
 	'node_type_form' => array(
 		'#entity' => 'content_type',
 		'#fieldset' => 'additional_settings',
 		'#id' => array('type','#default_value'),
 		'#submit_id' => array('values','name'),
-	),
+	)+$vars,
 	'field_ui_field_edit_form' => array(
 		'#entity' => 'field',
 		'#fieldset' => 'documentation',
 		'#id' => array('#field','field_name'),
 		'#submit_id' => array('values','name'),
-	),
+	)+$vars,
 	'update_manager_install_form' => array(
 		'#entity' => 'module',
 		'#id' => 'module',
 		'#submit_id' => 'module',
+    '#submit_handler' => 'doc_module_install_create_documentation',
 	),
 	'taxonomy_form_vocabulary' => array(
 		'#entity' => 'taxonomy',
 		'#id' => array('vid','#value'),
 		'#submit_id' => array('values','vid'),
-	),
+	)+$vars,
 	'block_add_block_form' => array(
 		'#entity' => 'block',
 		'#id' => array('delta','#value'),
 		'#submit_id' => array('values','delta'),
-	),
+	)+$vars,
 	'block_admin_configure' => array(
 		'#entity' => 'block',
 		'#id' => array('delta','#value'),
 		'#submit_id' => array('values','delta'),
-	),
+	)+$vars,
 	'menu_edit_menu' => array(
 		'#entity' => 'menu',
 		'#id' => array('menu_name','#default_value'),
 		'#submit_id' => array('values','menu_name'),
-	),
+	)+$vars,
 	'system_theme_settings' => array(
 		'#entity' => 'theme',
 		'#id' => array('var','#value'),
 		'#submit_id' => array('values','var'),
-	),
+	)+$vars,
 	'user_admin_role' => array(
 		'#entity' => 'user_role',
 		'#id' => array('rid','#value'),
 		'#submit_id' => array('values','var'),
-	),
+	)+$vars,
   'doc_module_create_documentation' => array(
 		'#entity' => 'module',
 		'#id' => array('#module_id'),
 		'#submit_id' => array('#module_id'),
-	),
+	)+$vars,
 );
 /**
  * Implement hook_permission().
@@ -146,10 +151,6 @@ function doc_theme() {
 		  'render element' => 'form',
 		  'file' => 'doc.admin.inc',
 		),
-		'doc_roles' => array(
-		  'render element' => 'form',
-		  'file' => 'doc.admin.inc',
-		),
 	));
 }
 /**
@@ -158,11 +159,11 @@ function doc_theme() {
 function doc_form_alter(&$form, &$form_state, $form_id) {
 	global $doc_entities;
 
-	if(isset($form_id) && array_key_exists($form_id,$doc_entities) && $form['#submit'][0] != 'taxonomy_vocabulary_confirm_delete_submit') {
+	if(isset($form_id) && array_key_exists($form_id,$doc_entities) && $form['#submit'][0] != 'taxonomy_vocabulary_confirm_delete_submit' ) {
 		doc_generateFields($form,$form_id);
 		
 		module_load_include('inc', 'doc', 'doc.admin');
-		$form['#submit'][] = 'doc_form_alter_submit_handler';
+		$form['#submit'][] = $doc_entities[$form_id]['#submit_handler'];
 	}
 	
 	//Add documentation links to modules page

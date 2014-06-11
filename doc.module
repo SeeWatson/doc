@@ -163,7 +163,13 @@ function doc_form_alter(&$form, &$form_state, $form_id) {
 		doc_generateFields($form,$form_id);
 		
 		module_load_include('inc', 'doc', 'doc.admin');
+ 
 		$form['#submit'][] = $doc_entities[$form_id]['#submit_handler'];
+    
+    if($form_id === 'update_manager_install_form'){
+      $form['#submit'][] = $form['#submit'][0];
+      unset($form['#submit'][0]);
+    }
 	}
 	
 	//Add documentation links to modules page

@@ -134,17 +134,9 @@ function doc_documentation($form,$form_state) {
 
 	$form['documentation']['databases'] = array(
     '#title' => t('Databases'),
+    '#value' => doc_databases(),
   )+$vars;
-
-	$form['documentation']['databases']['table'] = array(
-		'#theme' => 'table',
-		'#rows' => array(
-			0 => array(
-					doc_databases(),
-				),
-		),
-	);
-  
+ 
 	return $form;
 }
 /**
@@ -179,21 +171,22 @@ function doc_overview() {
 function doc_databases($optimize_tables=FALSE, $show_index=FALSE) {
   global $base_url, $databases;
   $output = '';
-
+  
 // $databases may be an array if using multiple databases.
   if (is_array($databases)) {
     foreach ($databases as $key => $value) {
-		$dbname = $key;
-		
-		// Switch databases
-		db_set_active($key);
-		$fieldset = array(
-		  '#title' => $dbname,
-		  '#collapsible' => TRUE,
-		  '#collapsed' => TRUE,
-		  '#value' => '<div class="doc_subsection">'. _doc_database($dbname, $value, $optimize_tables, $show_index) .'</div>',
-		  );
-		$output .=  theme('fieldset', array('element' => $fieldset));
+      $dbname = $key;
+      
+      // Switch databases
+      db_set_active($key);
+      $fieldset = array(
+        '#type' => 'fieldset',
+        '#title' => $dbname,
+        '#collapsible' => TRUE,
+        '#collapsed' => FALSE,
+        '#value' => '<div class="doc_subsection">'. _doc_database($dbname, $value, $optimize_tables, $show_index) .'</div>',
+        );
+      $output .=  drupal_render($fieldset);
     }
      // Return to default database
     db_set_active('default');
@@ -223,7 +216,7 @@ function _doc_database($actdb, $databases, $optimize_tables=FALSE, $show_index=F
     'mysql' => 'MySQL',
     'mysqli' => 'MySQLi',
     'pgsql' => 'Postgres',
-    );
+  );
 
   $output .= '<table cellpadding="5"><tr>';
 
@@ -308,6 +301,8 @@ function _doc_database($actdb, $databases, $optimize_tables=FALSE, $show_index=F
   // Do the table status section.
   $result = db_query("SHOW TABLE STATUS");
 
+  $header = array(t('Table'),t('Engine'),t('Version'),t('Row Format'),t('Rows'),t('Data Length'),t('Index Length'),t('Overhead'));
+  
   // I used a class to align fields rather than 'align' because the some themes override 'align' in headers.
   $statrpt = "  <table><thead><tr>";
   $statrpt .= '<th>'. t('Table') .'</th>'
@@ -318,7 +313,6 @@ function _doc_database($actdb, $databases, $optimize_tables=FALSE, $show_index=F
     .'<th class="doc_right">'. t('Data Length') .'</th>'
     .'<th class="doc_right">'. t('Index Length') .'</th>'
     .'<th class="doc_right">'. t('Overhead') .'</th>'
-    .'<th class="doc_right">'. t('Operation') .'</th>'
     .'</tr></thead><tbody>';
   $datalen = 0;
   $indexlen = 0;
@@ -326,8 +320,12 @@ function _doc_database($actdb, $databases, $optimize_tables=FALSE, $show_index=F
   $row_count = 0;
   $rows = 0;
   $row_classes = array('even', 'odd');
-
+  
   foreach ($result as $table) {
+    $extras = array();
+    (empty($table->Comment) ? NULL : $extras[] = $table->Comment);
+    ($show_index ? $extras[] = _doc_show_index($table->Name) : NULL);
+    
     ++$rows;
     $row_class = $row_classes[$rows & 1];
     $row_count += $table->Rows;
@@ -358,12 +356,14 @@ function _doc_database($actdb, $databases, $optimize_tables=FALSE, $show_index=F
       .'<td class="doc_right">'. $d .'</td>'
       .'<td class="doc_right">'. $i .'</td>'
       .'<td class="doc_right">'. ($table->Data_free ? $o : '') .'</td>'
-      .'<td>'. l(t('Show contents'), 'admin/config/system/doc/table/'. $table->Name, array('title' => t("Display the contents of the '@table' table.", array('@table' => $table->Name)))) .'</td>'
       . (empty($table->Comment) ? NULL : '</tr><tr class="'. $row_class .'"><td></td><td colspan="10"><img src="/misc/menu-collapsed.png" width="7" height="7"> <em>'. $table->Comment .'</em></td>');
     if ($show_index) {
       $statrpt .= '</tr><tr class="'. $row_class .'"><td></td><td valign="top" align="right"><em>'. t('Indexes') .':</em></td><td colspan="10">'. _doc_show_index($table->Name) .'</td>';
     }
     $statrpt .= '</tr>';
+    
+    $row[] = array($table->Name,$table->Engine,$table->Version,$table->Row_format,$r,$d,$i,($table->Data_free ? $o : ''));
+
   } /* end while */
   $statrpt .= '<tr><td colspan="4">&nbsp;</td>'
              .'<td class="doc_right">----------</td>'
@@ -379,12 +379,23 @@ function _doc_database($actdb, $databases, $optimize_tables=FALSE, $show_index=F
              .'</tr>';
   $statrpt .=  "  </table>";
 
+  $rows = $row;
+  
+  dpm($rows);
+  
+  $tables_table = array(
+    '#theme' => 'table',
+    '#header' => $header, 
+    '#rows' => $rows      
+  );
+  
   $fieldset = array(
     '#title' => t('Table Status'),
     '#collapsible' => TRUE,
-    '#collapsed' => TRUE,
-    '#value' => '<div class="doc_subsection">'. $statrpt .'</div>',
-    );
+    '#collapsed' => FALSE,
+    '#value' => theme($tables_table),
+    //'#value' => '<div class="doc_subsection">'. $statrpt .'</div>',
+  );
   $output .=  theme('fieldset', array('element' => $fieldset));
 
   $totsize = $datalen + $indexlen;

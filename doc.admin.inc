@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Administrative page callbacks for the googleanalytics module.
+ * Administrative page callbacks for the Documentation module.
  */
 
 /**
@@ -36,37 +36,16 @@ function doc_admin_settings_form($form,&$form_state) {
 	return system_settings_form($form);
 }
 /**
- * Returns HTML for the role order and new role form.
+ * Handles submission of the module configuration settings.
  *
- * @param $variables
- *   An associative array containing:
- *   - form: A render element representing the form.
- *
- * @ingroup themeable
- */
-
-function doc_admin_settings_validate($form, &$form_state) {
-}
-/**
- * Returns HTML for the role order and new role form.
- *
- * @param $variables
- *   An associative array containing:
- *   - form: A render element representing the form.
- *
- * @ingroup themeable
  */
 function doc_admin_settings_submit($form, &$form_state) {
+  
 	// Submission logic.
 }
 /**
- * Returns HTML for the role order and new role form.
+ * Default form handler for submissions from entities. Creates a variable and saves the documentation value.
  *
- * @param $variables
- *   An associative array containing:
- *   - form: A render element representing the form.
- *
- * @ingroup themeable
  */
 function doc_form_alter_submit_handler($form,&$form_state) {
 	global $doc_entities;
@@ -82,13 +61,12 @@ function doc_form_alter_submit_handler($form,&$form_state) {
 	variable_set("doc_{$entity}_{$id}",$docValue);
 }
 /**
- * Returns HTML for the role order and new role form.
+ * Function to display documentation for site.
  *
- * @param $variables
+ * @param $form
  *   An associative array containing:
  *   - form: A render element representing the form.
  *
- * @ingroup themeable
  */
 function doc_documentation($form,$form_state) {
   $vars = array(
@@ -148,7 +126,7 @@ function doc_documentation($form,$form_state) {
 	return $form;
 }
 /**
- *   Function to display general documentation contents.
+ *   Function to display site overview documentation.
  *
  *   @param:
  *     $table - table name to show.
@@ -169,7 +147,7 @@ function doc_overview() {
 }
 
 /**
- *   Function to display database contents.
+ *   Function to display database information.
  *
  *   @param:
  *     $table - table name to show.
@@ -549,7 +527,7 @@ function doc_show_table($table = NULL, $rows_per_page = 20) {
 }
 
 /**
- *   Function to display table contents.
+ *   Function to display node content type documentation.
  *
  *   @param:
  *     $table - table name to show.
@@ -888,7 +866,7 @@ function doc_module_install_create_documentation($form,$form_state) {
 }
 
 /**
- * Returns HTML for the module listing/editing page.
+ * Returns HTML for the module documentation pages.
  *
  * @param $variables
  *   An associative array containing:
@@ -913,7 +891,7 @@ function doc_module_create_documentation($form,$form_state,$module_name) {
 }
 
 /**
- * Returns HTML for the module listing/editing page.
+ * Saves the module documentation.
  *
  * @param $variables
  *   An associative array containing:

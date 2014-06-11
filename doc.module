@@ -67,7 +67,7 @@ $GLOBALS['doc_entities'] = array(
 	)+$vars,
 );
 /**
- * Implement hook_permission().
+ * Implements hook_permission().
  */
 function doc_permission() {
 	return array(
@@ -154,7 +154,7 @@ function doc_theme() {
 	));
 }
 /**
- * Implements hook_form_alter().
+ * Implements hook_form_alter(). Adds the documentation field to a variety of forms.
  */
 function doc_form_alter(&$form, &$form_state, $form_id) {
 	global $doc_entities;
@@ -163,7 +163,7 @@ function doc_form_alter(&$form, &$form_state, $form_id) {
 		doc_generateFields($form,$form_id);
 		
 		module_load_include('inc', 'doc', 'doc.admin');
-		$form['#submit'][] = $doc_entities[$form_id]['#submit_handler'];
+		array_unshift($form['#submit'],$doc_entities[$form_id]['#submit_handler']);
 	}
 	
 	//Add documentation links to modules page
@@ -177,7 +177,7 @@ function doc_form_alter(&$form, &$form_state, $form_id) {
 				// Stick it into $module for easier accessing.
 				$module['links']['documentation'] = array(
 					'#type' => 'link',
-					'#title' => 'Documentation',
+					'#title' => 'Write Documentation',
 					'#href' => "admin/documentation/module/$key",
 					'#options' => array (
 						'attributes' => array(
@@ -197,7 +197,7 @@ function doc_form_alter(&$form, &$form_state, $form_id) {
 //	dsm(get_defined_vars());
 }
 /**
- * This function modifies the modules page to load using this module
+ * This function modifies the modules page to load in using a custom function, for the purpose of adding the Write Documentation links
  */
 function doc_theme_registry_alter(&$theme_registry) {
 	if (!empty($theme_registry['system_modules_fieldset'])) {

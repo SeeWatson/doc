@@ -1,14 +1,43 @@
 <?php
-/**
- * Implements hook_uninstall().
- */
-function doc_uninstall() {
-    variable_del('doc_testing');
-}
 
 /**
- * Implements hook_install().
+ * @file
+ * Install, update and uninstall functions for the implementation documentation module.
  */
-function doc_install() {
-    variable_set('doc_testing', 1);
+
+ /**
+ * Implements hook_schema().
+ */
+function doc_schema() {
+  $schema['doc_documentation'] = array(
+    'description' => 'Stores implementation documentation.',
+    'fields' => array(
+      'did'  => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique documentation ID.',
+      ),
+      'type' => array(
+        'type' => 'varchar',
+        'length' => 128,
+        'not null' => TRUE,
+        'description' => "The type of type/object/component/thing that is being documented (e.g. - module, content type, etc.).",
+      ),
+      'identifier' => array(
+        'type' => 'varchar',
+        'length' => 256,
+        'not null' => TRUE,
+        'description' => 'The unique identifier for the type/object/component/thing that is being documented. Could be an nid, a content type machine name, or a module identifier.',
+      ),
+      'documentation' => array(
+        'type' => 'text',
+        'size' => 'big',
+        'not null' => TRUE,
+        'description' => 'The actual documentation text.',
+      ),
+    ),
+    'primary key' => array('did'),
+  );
+
+  return $schema;
 }

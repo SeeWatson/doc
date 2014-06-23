@@ -9,12 +9,12 @@
  * Implements hook_admin_settings() for module settings configuration.
  */
 function doc_admin_settings_form($form,&$form_state) {
-	$form['entities'] = array(
+	$form['types'] = array(
 		'#type' => 'fieldset',
 		'#title' => t('Documentation Module Settings'),
 	);
 
-	$form['entities']['doc_what'] = array(
+	$form['types']['doc_what'] = array(
 	'#type' => 'checkboxes',
 	'#title' => t('What to Document'),
 		'#options' => array(
@@ -44,21 +44,33 @@ function doc_admin_settings_submit($form, &$form_state) {
 	// Submission logic.
 }
 /**
- * Default form handler for submissions from entities. Creates a variable and saves the documentation value.
+ * Default form handler for submissions from types. Creates a variable and saves the documentation value.
  *
  */
 function doc_form_alter_submit_handler($form,&$form_state) {
-	global $doc_entities;
+	global $doc_types;
+  $doc_value = '';
 	$form_id = $form['#form_id'];
-
-	$entity = $doc_entities[$form_id]['#entity'];
-	$id = doc_convertArrayToKeys($doc_entities[$form_id]['#submit_id'],$form_state);
-
-	$docValue = variable_get("doc_{$entity}_{$id}"); //Get previous value
-		
-	$docValue = doc_isset($form['doc']['fieldset']['documentation']['#value'],false,$docValue);
+  
+	$type = $doc_types[$form_id]['#type'];
+	$id = doc_convertArrayToKeys($doc_types[$form_id]['#submit_id'],$form_state);
+	$doc_value = doc_isset($form['doc']['fieldset']['documentation']['#value'],false,$doc_value);
 	
-	variable_set("doc_{$entity}_{$id}",$docValue);
+	//variable_set("doc_{$type}_{$id}",$doc_value);
+  
+  dpm($form_state);
+  
+  /*
+  db_merge('doc_documentation')
+    ->key(array(
+      'type' => $type,
+      'identifier' => $id,
+    ))
+    ->fields(array(
+      'documentation' => $doc_value,
+      ))
+    ->execute();
+  */
 }
 /**
  * Function to display documentation for site.
@@ -139,7 +151,7 @@ function doc_overview() {
 //		'#header' => array('Core Site Documentation'),
 		'#rows' => array(
 			0 => array(
-					variable_get('doc_configuration_site'),
+					doc_get('configuration','site'),
 				),
 		),
 	);
@@ -544,7 +556,7 @@ function doc_types() {
 
   foreach ($names as $key => $name) {
     $type = $types[$key];
-	$documentation = variable_get('doc_content_type_'.$name);
+    $documentation = doc_get('content_type',$name);
 	
     if (node_hook($type->type, 'form')) {
       $type_url_str = str_replace('_', '-', $type->type);
@@ -578,7 +590,7 @@ function doc_fields() {
 
   $header = array(t('Field name'), t('Field type'), t('Used in'),t('Documentation'));
   $rows = array();
-  foreach ($instances as $entity_type => $type_bundles) {
+  foreach ($instances as $type_type => $type_bundles) {
     foreach ($type_bundles as $bundle => $bundle_instances) {
       foreach ($bundle_instances as $field_name => $instance) {
         $field = field_info_field($field_name);
@@ -592,10 +604,10 @@ function doc_fields() {
         }
 
         // Add the current instance.
-        $admin_path = _field_ui_bundle_admin_path($entity_type, $bundle);
-        $rows[$field_name]['data'][2][] = $admin_path ? l($bundles[$entity_type][$bundle]['label'], $admin_path . '/fields') : $bundles[$entity_type][$bundle]['label'];
+        $admin_path = _field_ui_bundle_admin_path($type_type, $bundle);
+        $rows[$field_name]['data'][2][] = $admin_path ? l($bundles[$type_type][$bundle]['label'], $admin_path . '/fields') : $bundles[$type_type][$bundle]['label'];
 		
-		$rows[$field_name]['data'][3] = variable_get('doc_field_'.$field_name,'test');
+		$rows[$field_name]['data'][3] = doc_get('field',$field_name);
       }
     }
   }
@@ -696,7 +708,7 @@ function doc_roles() {
   $header = array ('Role Name','Documentation');
   
   foreach($roles as $role) {
-    $row[] = array($role,variable_get("doc_role_$role"));
+    $row[] = array($role,doc_get('role',$role));
   }
   
   $rows = $row;
@@ -750,7 +762,7 @@ function theme_doc_modules($variables) {
     }
     $row[] = array('data' => $description, 'class' => array('description'));
 
-	$row[] = variable_get('doc_module_'.$key);
+	$row[] = doc_get('module',$key);
     $rows[] = $row;
   }
 
@@ -862,7 +874,17 @@ function doc_module_install_create_documentation($form,$form_state) {
     return;
   }
   
-  variable_set("doc_module_$project",doc_isset($form_state['values'],'documentation'));
+  //variable_set("doc_module_$project",doc_isset($form_state['values'],'documentation'));
+    
+  db_merge('doc_documentation')
+    ->key(array(
+      'type' => 'module',
+      'identifier' => $project,
+    ))
+    ->fields(array(
+      'documentation' => doc_isset($form_state['values'],'documentation'),
+      ))
+    ->execute();
 }
 
 /**
@@ -900,5 +922,15 @@ function doc_module_create_documentation($form,$form_state,$module_name) {
  * @ingroup themeable
  */
 function doc_module_create_documentation_save($form,$form_state) {
-  variable_set('doc_module_'.$form['#module_id'],$form_state['values']['documentation']);
+  //variable_set('doc_module_'.$form['#module_id'],$form_state['values']['documentation']);
+  
+  db_merge('doc_documentation')
+    ->key(array(
+      'type' => 'module',
+      'identifier' => $form['#module_id'],
+    ))
+    ->fields(array(
+      'documentation' => $form_state['values']['documentation'],
+      ))
+    ->execute();
 }

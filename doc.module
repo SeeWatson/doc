@@ -1,67 +1,67 @@
 <?php
 /**
- * Set global array to configure core entity links
+ * Set global array to configure core type links
  */
 $vars = array (
   '#submit_handler' => 'doc_form_alter_submit_handler',
 );
- 
-$GLOBALS['doc_entities'] = array(
+
+$GLOBALS['doc_types'] = array(
 	'system_site_information_settings' => array(
-		'#entity' => 'configuration',
+		'#type' => 'configuration',
 		'#id' => 'site',
 		'#submit_id' => 'site',
 	)+$vars,
 	'node_type_form' => array(
-		'#entity' => 'content_type',
+		'#type' => 'content_type',
 		'#fieldset' => 'additional_settings',
 		'#id' => array('type','#default_value'),
-		'#submit_id' => array('values','name'),
+		'#submit_id' => array('values','type'),
 	)+$vars,
 	'field_ui_field_edit_form' => array(
-		'#entity' => 'field',
+		'#type' => 'field',
 		'#fieldset' => 'documentation',
 		'#id' => array('#field','field_name'),
 		'#submit_id' => array('values','name'),
 	)+$vars,
 	'update_manager_install_form' => array(
-		'#entity' => 'module',
+		'#type' => 'module',
 		'#id' => 'module',
 		'#submit_id' => 'module',
     '#submit_handler' => 'doc_module_install_create_documentation',
 	),
 	'taxonomy_form_vocabulary' => array(
-		'#entity' => 'taxonomy',
+		'#type' => 'taxonomy',
 		'#id' => array('vid','#value'),
 		'#submit_id' => array('values','vid'),
 	)+$vars,
 	'block_add_block_form' => array(
-		'#entity' => 'block',
+		'#type' => 'block',
 		'#id' => array('delta','#value'),
 		'#submit_id' => array('values','delta'),
 	)+$vars,
 	'block_admin_configure' => array(
-		'#entity' => 'block',
+		'#type' => 'block',
 		'#id' => array('delta','#value'),
 		'#submit_id' => array('values','delta'),
 	)+$vars,
 	'menu_edit_menu' => array(
-		'#entity' => 'menu',
+		'#type' => 'menu',
 		'#id' => array('menu_name','#default_value'),
 		'#submit_id' => array('values','menu_name'),
 	)+$vars,
 	'system_theme_settings' => array(
-		'#entity' => 'theme',
+		'#type' => 'theme',
 		'#id' => array('var','#value'),
-		'#submit_id' => array('values','var'),
+		'#submit_id' => array('values','machine_name'),
 	)+$vars,
 	'user_admin_role' => array(
-		'#entity' => 'user_role',
+		'#type' => 'user_role',
 		'#id' => array('rid','#value'),
 		'#submit_id' => array('values','var'),
 	)+$vars,
   'doc_module_create_documentation' => array(
-		'#entity' => 'module',
+		'#type' => 'module',
 		'#id' => array('#module_id'),
 		'#submit_id' => array('#module_id'),
 	)+$vars,
@@ -157,20 +157,20 @@ function doc_theme() {
  * Implements hook_form_alter(). Adds the documentation field to a variety of forms.
  */
 function doc_form_alter(&$form, &$form_state, $form_id) {
-	global $doc_entities;
+	global $doc_types;
 
-	if(isset($form_id) && array_key_exists($form_id,$doc_entities) && $form['#submit'][0] != 'taxonomy_vocabulary_confirm_delete_submit' ) {
+	if(isset($form_id) && array_key_exists($form_id,$doc_types) && $form['#submit'][0] != 'taxonomy_vocabulary_confirm_delete_submit' ) {
 		doc_generateFields($form,$form_id);
-		
+
 		module_load_include('inc', 'doc', 'doc.admin');
-		array_unshift($form['#submit'],$doc_entities[$form_id]['#submit_handler']);
+		array_unshift($form['#submit'],$doc_types[$form_id]['#submit_handler']);
 	}
-	
+
 	//Add documentation links to modules page
 	if($form_id==='system_modules' && !isset($form['confirm'])) {
 		foreach (element_children($form['modules']) as $package) {
 			$form['modules'][$package]['#header'][4]['colspan'] = 4;
-			
+
 			foreach(element_children($form['modules'][$package]) as $key){
 				$module = &$form['modules'][$package][$key];
 
@@ -191,13 +191,17 @@ function doc_form_alter(&$form, &$form_state, $form_id) {
 			}
 		}
 	}
-		
+
 //	dsm($form_id);
 //	dsm(print_r($form,true));
 //	dsm(get_defined_vars());
 }
 /**
- * This function modifies the modules page to load in using a custom function, for the purpose of adding the Write Documentation links
+ * Modifies the modules view page
+ *
+ * This causes the modules view page to load using a custom function. It reproduces the
+ * code from the actual module view page, but adds in the Write Documentation links.
+ *
  */
 function doc_theme_registry_alter(&$theme_registry) {
 	if (!empty($theme_registry['system_modules_fieldset'])) {
@@ -213,11 +217,11 @@ function doc_theme_registry_alter(&$theme_registry) {
  * This function generates the documentation field
  */
 function doc_generateFields(&$form,&$form_id) {
-	global $doc_entities;
+	global $doc_types;
 
-	$id = doc_convertArrayToKeys($doc_entities[$form_id]['#id'],$form);
-	$entity = $doc_entities[$form_id]['#entity'];
-	$fieldset = doc_isset($doc_entities[$form_id],'#fieldset');
+	$id = doc_convertArrayToKeys($doc_types[$form_id]['#id'],$form);
+	$type = $doc_types[$form_id]['#type'];
+	$fieldset = doc_isset($doc_types[$form_id],'#fieldset');
 
 	$doc_field = array(
 		'#type' => 'fieldset',
@@ -227,11 +231,11 @@ function doc_generateFields(&$form,&$form_id) {
 		'documentation' => array(
 			'#title' => 'Create Documentation',
 			'#type' => 'textarea',
-			'#description' => t('Provide documentation for this @entity.',array('@entity' => $entity)),
-			'#default_value' => variable_get("doc_{$entity}_{$id}"),
+			'#description' => t('Provide documentation for this @type.',array('@type' => $type)),
+			'#default_value' => doc_get($type,$id),
 		),
 	);
-		
+
 	$form['doc']['fieldset'] = $doc_field;
 }
 
@@ -254,13 +258,25 @@ function doc_convertArrayToKeys($keys,$arrayToAccess){
 	if(is_string($keys)){
 		return $keys;
 	} elseif(is_array($keys)){
-		if(count($keys) > 1) 
+		if(count($keys) > 1)
 			if(isset($arrayToAccess[$keys[0]])){
 				return doc_convertArrayToKeys(array_slice($keys, 1), $arrayToAccess[$keys[0]]);
 			} else
 				return '';
 		else
- //     dsm($arrayToAccess);
-			return $arrayToAccess[$keys[0]];	
+			return $arrayToAccess[$keys[0]];
 	}
+}
+/**
+ * This is a convenience function to get documentation from the database
+ */
+function doc_get($type,$identifier) {
+  $result = db_select('doc_documentation', 'd')
+    ->fields('d',array('documentation'))
+    ->condition('type',$type,'=')
+    ->condition('identifier',$identifier,'=')
+    ->execute()
+    ->fetchField();
+
+  return $result;
 }

@@ -1,0 +1,9 @@
+name = Documentation
+description = Provides an interface for writing documentation for your Drupal implementation
+core = 7.x
+package = Site Documentation
+
+stylesheets[all][] = css/doc.css
+scripts[] = js/doc.js
+
+configure = admin/config/system/documentation

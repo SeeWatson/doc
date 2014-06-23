@@ -1,0 +1,266 @@
+<?php
+/**
+ * Set global array to configure core entity links
+ */
+$vars = array (
+  '#submit_handler' => 'doc_form_alter_submit_handler',
+);
+ 
+$GLOBALS['doc_entities'] = array(
+	'system_site_information_settings' => array(
+		'#entity' => 'configuration',
+		'#id' => 'site',
+		'#submit_id' => 'site',
+	)+$vars,
+	'node_type_form' => array(
+		'#entity' => 'content_type',
+		'#fieldset' => 'additional_settings',
+		'#id' => array('type','#default_value'),
+		'#submit_id' => array('values','name'),
+	)+$vars,
+	'field_ui_field_edit_form' => array(
+		'#entity' => 'field',
+		'#fieldset' => 'documentation',
+		'#id' => array('#field','field_name'),
+		'#submit_id' => array('values','name'),
+	)+$vars,
+	'update_manager_install_form' => array(
+		'#entity' => 'module',
+		'#id' => 'module',
+		'#submit_id' => 'module',
+    '#submit_handler' => 'doc_module_install_create_documentation',
+	),
+	'taxonomy_form_vocabulary' => array(
+		'#entity' => 'taxonomy',
+		'#id' => array('vid','#value'),
+		'#submit_id' => array('values','vid'),
+	)+$vars,
+	'block_add_block_form' => array(
+		'#entity' => 'block',
+		'#id' => array('delta','#value'),
+		'#submit_id' => array('values','delta'),
+	)+$vars,
+	'block_admin_configure' => array(
+		'#entity' => 'block',
+		'#id' => array('delta','#value'),
+		'#submit_id' => array('values','delta'),
+	)+$vars,
+	'menu_edit_menu' => array(
+		'#entity' => 'menu',
+		'#id' => array('menu_name','#default_value'),
+		'#submit_id' => array('values','menu_name'),
+	)+$vars,
+	'system_theme_settings' => array(
+		'#entity' => 'theme',
+		'#id' => array('var','#value'),
+		'#submit_id' => array('values','var'),
+	)+$vars,
+	'user_admin_role' => array(
+		'#entity' => 'user_role',
+		'#id' => array('rid','#value'),
+		'#submit_id' => array('values','var'),
+	)+$vars,
+  'doc_module_create_documentation' => array(
+		'#entity' => 'module',
+		'#id' => array('#module_id'),
+		'#submit_id' => array('#module_id'),
+	)+$vars,
+);
+/**
+ * Implements hook_permission().
+ */
+function doc_permission() {
+	return array(
+	'administer documentation' => array(
+	'title' => t('Administer documentation'),
+	'description' => t('Allow editing of documentation by user.'),
+	),
+	'view documentation' => array(
+	'title' => t('View documentation'),
+	'description' => t('Allow viewing of documentation by user.'),
+	),
+	);
+}
+
+/**
+ * Implements hook_help().
+ */
+function doc_help($path, $arg) {
+	switch ($path) {
+		case 'admin/help#documentation':
+			return t('The documentation module provides a framework for documenting all aspects of a Drupal installation');
+		case 'admin/config/system/documentation':
+			return t('The documentation module provides a framework for documenting all aspects of a Drupal installation');
+    case 'admin/documentation/module/%':
+			return t('The documentation module provides a framework for documenting all aspects of a Drupal installation');
+	}
+}
+
+/**
+ * Implements hook_menu().
+ */
+function doc_menu() {
+  $access = array('view documentation');
+  $administer = array('administer documentation');
+
+	$items['admin/config/system/documentation'] = array(
+		'title' => 'Documentation',
+		'description' => "View the documentation for this site's implementation of Drupal.",
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('doc_admin_settings_form'),
+		'access arguments' => $administer,
+		'type' => MENU_NORMAL_ITEM,
+		'file' => 'doc.admin.inc',
+	);
+	$items['admin/settings/documentation'] = array(
+		'title' => 'Documentation',
+		'description' => "View the documentation for this site's implementation of Drupal.",
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('doc_documentation'),
+		'access arguments' => $access,
+		'file' => 'doc.admin.inc',
+	);
+	$items['admin/settings/documentation/view'] = array(
+    'title' => 'View Documentation',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -1,
+  );
+	$items['admin/settings/documentation/settings'] = array(
+    'title' => 'Change Documentation Module Settings',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('customfilter_filter_add'),
+    'access arguments' => $administer,
+    'type' => MENU_LOCAL_TASK,
+  );
+	$items['admin/documentation/module/%'] = array(
+		'title' => 'Create Documentation for Module',
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('doc_module_create_documentation',3),
+		'access arguments' => $administer,
+		'type' => MENU_CALLBACK,
+		'file' => 'doc.admin.inc',
+	);
+	return $items;
+}
+/**
+ * Implements hook_theme().
+ */
+function doc_theme() {
+	return array_merge(drupal_common_theme(), array(
+		'doc_modules' => array(
+		  'render element' => 'form',
+		  'file' => 'doc.admin.inc',
+		),
+	));
+}
+/**
+ * Implements hook_form_alter(). Adds the documentation field to a variety of forms.
+ */
+function doc_form_alter(&$form, &$form_state, $form_id) {
+	global $doc_entities;
+
+	if(isset($form_id) && array_key_exists($form_id,$doc_entities) && $form['#submit'][0] != 'taxonomy_vocabulary_confirm_delete_submit' ) {
+		doc_generateFields($form,$form_id);
+		
+		module_load_include('inc', 'doc', 'doc.admin');
+		array_unshift($form['#submit'],$doc_entities[$form_id]['#submit_handler']);
+	}
+	
+	//Add documentation links to modules page
+	if($form_id==='system_modules' && !isset($form['confirm'])) {
+		foreach (element_children($form['modules']) as $package) {
+			$form['modules'][$package]['#header'][4]['colspan'] = 4;
+			
+			foreach(element_children($form['modules'][$package]) as $key){
+				$module = &$form['modules'][$package][$key];
+
+				// Stick it into $module for easier accessing.
+				$module['links']['documentation'] = array(
+					'#type' => 'link',
+					'#title' => 'Write Documentation',
+					'#href' => "admin/documentation/module/$key",
+					'#options' => array (
+						'attributes' => array(
+							'class' => array(
+								'module-link',
+								'module-link-documentation',
+							),
+						),
+					),
+				);
+			}
+		}
+	}
+		
+//	dsm($form_id);
+//	dsm(print_r($form,true));
+//	dsm(get_defined_vars());
+}
+/**
+ * This function modifies the modules page to load in using a custom function, for the purpose of adding the Write Documentation links
+ */
+function doc_theme_registry_alter(&$theme_registry) {
+	if (!empty($theme_registry['system_modules_fieldset'])) {
+		$doc_theme_path = drupal_get_path('module', 'doc');
+		$doc_theme_file = 'doc.admin.inc';
+		$theme_registry['system_modules_fieldset']['file'] = 'doc_theme_file';
+		$theme_registry['system_modules_fieldset']['theme path'] = $doc_theme_path;
+		$theme_registry['system_modules_fieldset']['function'] = 'doc_theme_system_modules_fieldset';
+		$theme_registry['system_modules_fieldset']['includes'][0] = $doc_theme_path.'/'.$doc_theme_file;
+	}
+}
+/**
+ * This function generates the documentation field
+ */
+function doc_generateFields(&$form,&$form_id) {
+	global $doc_entities;
+
+	$id = doc_convertArrayToKeys($doc_entities[$form_id]['#id'],$form);
+	$entity = $doc_entities[$form_id]['#entity'];
+	$fieldset = doc_isset($doc_entities[$form_id],'#fieldset');
+
+	$doc_field = array(
+		'#type' => 'fieldset',
+		'#title' => 'Documentation',
+		'#collapsible' => true,
+		'#group' => $fieldset,
+		'documentation' => array(
+			'#title' => 'Create Documentation',
+			'#type' => 'textarea',
+			'#description' => t('Provide documentation for this @entity.',array('@entity' => $entity)),
+			'#default_value' => variable_get("doc_{$entity}_{$id}"),
+		),
+	);
+		
+	$form['doc']['fieldset'] = $doc_field;
+}
+
+/**
+ * This is a convenience function that replaces PHP's native isset
+ */
+function doc_isset($var,$index=false,$default_value='') {
+	$return_value = (isset($var) ? $var : $default_value);
+
+	if($index){
+		$return_value = (isset($var[$index]) ? $var[$index] : $default_value);
+	}
+
+	return $return_value;
+}
+/**
+ * This is a convenience function that allows for array key paths to be encoded in another array
+ */
+function doc_convertArrayToKeys($keys,$arrayToAccess){
+	if(is_string($keys)){
+		return $keys;
+	} elseif(is_array($keys)){
+		if(count($keys) > 1) 
+			if(isset($arrayToAccess[$keys[0]])){
+				return doc_convertArrayToKeys(array_slice($keys, 1), $arrayToAccess[$keys[0]]);
+			} else
+				return '';
+		else
+ //     dsm($arrayToAccess);
+			return $arrayToAccess[$keys[0]];	
+	}
+}

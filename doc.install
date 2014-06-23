@@ -1,0 +1,14 @@
+<?php
+/**
+ * Implements hook_uninstall().
+ */
+function doc_uninstall() {
+    variable_del('doc_testing');
+}
+
+/**
+ * Implements hook_install().
+ */
+function doc_install() {
+    variable_set('doc_testing', 1);
+}
